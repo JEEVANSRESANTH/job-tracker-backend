@@ -1,70 +1,61 @@
 package com.jobtracker.backend.controller;
-import org.springframework.boot.autoconfigure.batch.BatchProperties;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
-import java.util.*;
+import com.jobtracker.backend.model.Job;
+import com.jobtracker.backend.service.JobService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/jobs")
 @CrossOrigin(origins = "http://localhost:5173")
 public class JobController {
-    private final List<Map<String, Object>> jobs = new ArrayList<>();
+
+    private final JobService jobService;
+
+    public JobController(JobService jobService) {
+        this.jobService = jobService;
+    }
+
+    // ✅ GET all jobs
     @GetMapping
-    public List<Map<String,Object>> getAllJobs() {
-        return jobs;
+    public List<Job> getAllJobs() {
+        return jobService.getAllJobs();
     }
+
+    // ✅ CREATE job
     @PostMapping
-    public ResponseEntity<Map<String,Object>> createJob(
-            @RequestBody Map<String,Object> request
-    ){
-        Map<String,Object> job=Map.of(
-                "id", UUID.randomUUID().toString(),
-                "company", request.get("company"),
-                "role", request.get("role"),
-                "status", request.get("status")
-        );
-        jobs.add(job);
-        return new ResponseEntity<>(job, HttpStatus.CREATED);
+    public ResponseEntity<Job> createJob(
+            @Valid @RequestBody Job job
+    ) {
+        Job saved = jobService.createJob(job);
+        return ResponseEntity.status(201).body(saved);
     }
+
+    // ✅ UPDATE job
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String,Object>> updateJob(
+    public ResponseEntity<Job> updateJob(
             @PathVariable String id,
-            @RequestBody Map<String,Object> request
-    ){
-        for(int i=0;i<jobs.size();i++){
-            Map<String,Object> existingjob=jobs.get(i);
-            if(existingjob.get("id").equals(id)){
-                Map<String,Object> updatedJob=Map.of(
-                        "id", id,
-                        "company", request.get("company"),
-                        "role", request.get("role"),
-                        "status", request.get("status")
-                );
-                jobs.set(i,updatedJob);
-                return ResponseEntity.ok(updatedJob);
-            }
+            @Valid @RequestBody Job job
+    ) {
+        Job updated = jobService.updateJob(id, job);
+
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        return ResponseEntity.ok(updated);
     }
+
+    // ✅ DELETE job
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteJob(@PathVariable String id) {
-        for (int i = 0; i < jobs.size(); i++) {
-            Map<String, Object> existingjob = jobs.get(i);
-            if (existingjob.get("id").equals(id)) {
-                jobs.remove(i);
-                return ResponseEntity.noContent().build();
-            }
+        boolean deleted = jobService.deleteJob(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
     }
 }
